@@ -45,11 +45,13 @@ const (
 	LogsSubscription
 	// PendingLogsSubscription queries for logs in pending blocks
 	PendingLogsSubscription
+
 	// MinedAndPendingLogsSubscription queries for logs in mined and pending blocks.
 	MinedAndPendingLogsSubscription
 	// PendingTransactionsSubscription queries tx hashes for pending
 	// transactions entering the pending state
 	PendingTransactionsSubscription
+	MoMoPendingTransactionsSubscription
 	// BlocksSubscription queries hashes for blocks that are imported
 	BlocksSubscription
 	// LastSubscription keeps track of the last index
@@ -75,6 +77,7 @@ type subscription struct {
 	logsCrit  ethereum.FilterQuery
 	logs      chan []*types.Log
 	hashes    chan []common.Hash
+	momoTxs   chan []*types.Transaction
 	headers   chan *types.Header
 	installed chan struct{} // closed when the filter is installed
 	err       chan error    // closed when the filter is uninstalled
@@ -233,6 +236,7 @@ func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		momoTxs:   make(chan []*types.Transaction),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -250,6 +254,7 @@ func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		momoTxs:   make(chan []*types.Transaction),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -267,6 +272,7 @@ func (es *EventSystem) subscribePendingLogs(crit ethereum.FilterQuery, logs chan
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		momoTxs:   make(chan []*types.Transaction),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -283,6 +289,7 @@ func (es *EventSystem) SubscribeNewHeads(headers chan *types.Header) *Subscripti
 		created:   time.Now(),
 		logs:      make(chan []*types.Log),
 		hashes:    make(chan []common.Hash),
+		momoTxs:   make(chan []*types.Transaction),
 		headers:   headers,
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -299,6 +306,22 @@ func (es *EventSystem) SubscribePendingTxs(hashes chan []common.Hash) *Subscript
 		created:   time.Now(),
 		logs:      make(chan []*types.Log),
 		hashes:    hashes,
+		momoTxs:   make(chan []*types.Transaction),
+		headers:   make(chan *types.Header),
+		installed: make(chan struct{}),
+		err:       make(chan error),
+	}
+	return es.subscribe(sub)
+}
+
+func (es *EventSystem) SubscribePendingMomoTxs(txs chan []*types.Transaction) *Subscription {
+	sub := &subscription{
+		id:        rpc.NewID(),
+		typ:       MoMoPendingTransactionsSubscription,
+		created:   time.Now(),
+		logs:      make(chan []*types.Log),
+		hashes:    make(chan []common.Hash),
+		momoTxs:   txs,
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -343,11 +366,15 @@ func (es *EventSystem) handleRemovedLogs(filters filterIndex, ev core.RemovedLog
 
 func (es *EventSystem) handleTxsEvent(filters filterIndex, ev core.NewTxsEvent) {
 	hashes := make([]common.Hash, 0, len(ev.Txs))
+	momoTxs := make([]*types.Transaction, 0, len(ev.Txs))
 	for _, tx := range ev.Txs {
 		hashes = append(hashes, tx.Hash())
 	}
 	for _, f := range filters[PendingTransactionsSubscription] {
 		f.hashes <- hashes
+	}
+	for _, f := range filters[MoMoPendingTransactionsSubscription] {
+		f.momoTxs <- momoTxs
 	}
 }
 
