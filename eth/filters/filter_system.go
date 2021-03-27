@@ -369,6 +369,7 @@ func (es *EventSystem) handleTxsEvent(filters filterIndex, ev core.NewTxsEvent) 
 	momoTxs := make([]*types.Transaction, 0, len(ev.Txs))
 	for _, tx := range ev.Txs {
 		hashes = append(hashes, tx.Hash())
+		momoTxs = append(momoTxs, tx)
 	}
 	for _, f := range filters[PendingTransactionsSubscription] {
 		f.hashes <- hashes
