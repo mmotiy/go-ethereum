@@ -106,6 +106,7 @@ func (s *PublicTxPoolAPI) ContentFilter(address map[string]bool) map[string]map[
 	for account, txs := range pending {
 		dump := make(map[string]*RPCTransaction)
 		for _, tx := range txs {
+			println(tx.To().String(), tx.To().Hex())
 			if _, b := address[tx.To().Hex()]; b {
 				dump[fmt.Sprintf("%d", tx.Nonce())] = newRPCPendingTransaction(tx)
 			}
