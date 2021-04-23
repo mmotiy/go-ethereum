@@ -109,11 +109,13 @@ func (s *PublicTxPoolAPI) ContentFilter(address map[string]bool) map[string]map[
 			if tx.To() == nil {
 				continue
 			}
-			if _, b := address[tx.To().Hex()]; b {
+			if address[tx.To().Hex()] {
 				dump[fmt.Sprintf("%d", tx.Nonce())] = newRPCPendingTransaction(tx)
 			}
 		}
-		content[account.Hex()] = dump
+		if len(dump) != 0 {
+			content[account.Hex()] = dump
+		}
 	}
 	return content
 }
