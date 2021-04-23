@@ -465,6 +465,16 @@ func (pool *TxPool) stats() (int, int) {
 	return pending, queued
 }
 
+func (pool *TxPool) ContentFilter() map[common.Address]types.Transactions {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	pending := make(map[common.Address]types.Transactions)
+	for addr, list := range pool.pending {
+		pending[addr] = list.Flatten()
+	}
+	return pending
+}
+
 // Content retrieves the data content of the transaction pool, returning all the
 // pending as well as queued transactions, grouped by account and sorted by nonce.
 func (pool *TxPool) Content() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {
